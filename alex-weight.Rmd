@@ -7,12 +7,12 @@ output: html_document
 
 ## Summary
 
-This document demonstrates R markdown capabilities using  weight data.
+This document demonstrates R markdown capabilities using my weight data gathered since 2008.
 
 ## Data
 
 Data analyzed in this document was downloaded on 12/23/2014 from [Google Drive](https://docs.google.com/spreadsheet/pub?key=0Am9Zu_A32sZHdERNQWFxSUROTlV6SGd5WnkzMzRlb2c&output=html).
-Data collection was performed sporadically through a [Google Docs form](https://docs.google.com/forms/d/1nx-yt3DvgvYYp6cmzDEz2yV_M3lECKBZwB8gUgKhUIc/viewform).
+Data collection was performed sporadically, mostly using a [Google Docs form](https://docs.google.com/forms/d/1nx-yt3DvgvYYp6cmzDEz2yV_M3lECKBZwB8gUgKhUIc/viewform).
 Data collection was almost always performed in the morning after waking up. 
 
 The same scale was used for all measurements. Measurements were taken in pounds. The scale has a resolution of 0.5 pounds.
@@ -28,9 +28,9 @@ raw <- read.csv('Weight - Weight.csv', stringsAsFactors=FALSE)
 str(raw)
 ```
 
-The reason for the redundant date fields is historical. Originally, the data was entered through Google Docs, and the date was entered manually in the Date field. Data collection using a Google Docs form replaced manual entry, at which point the date was automatically entered in Timestamp field.
+The reason for the redundant date fields is historical. Originally, the data was entered through Google Docs, and the date was entered manually in the Date field. Data collection using a Google Docs form replaced manual entry, at which point the date was automatically entered in the Timestamp field.
 
-The following R code creates a date field that uses the Date field if it is available, and uses the Timestamp field if Date is not present. The new field also converts the dates in the native R date format. Note that times in the Timestamp column are ignored.
+The following R code creates a date field that uses the raw Timestamp field if it is available, and uses the raw Date field if raw Timestamp is not present. The new field also converts the dates in the native R date format. Note that times in the Timestamp column are ignored.
 
 ```{r}
 CleanDate <- as.Date(raw$Timestamp, format = '%m/%d/%Y')
@@ -48,7 +48,6 @@ Missing weights also need to be identified.
 
 ```{r}
 CleanWeight <- as.numeric(raw$Weight)
-CleanWeight[raw$Weight==""] <- NA
 
 num_missing_weights <- sum(is.na(CleanWeight))
 ```
@@ -59,10 +58,7 @@ There were `r num_missing_dates` missing dates and `r num_missing_weights` missi
 # Create a new data frame with the cleaned dates (labeled Date)
 data <- data.frame(date = CleanDate, weight = CleanWeight)
 
-data <- data[!(is.na(CleanDate) | is.na(CleanWeight)),]
-
-# Sort by date
-data <- data[order(data$date),]
+data <- data[! (is.na(CleanDate) | is.na(CleanWeight)),]
 ```
 
 ### Data Profile
@@ -81,9 +77,57 @@ Half of the weights are in the range (`r s[2]`, `r s[4]`). The boxplot below sho
 boxplot(data$weight)
 ```
 
-### Behavior over time
+Given that more weight observations lie in the upper part of the range, we expect the distribution to be left skewed. The histogram below confirms the skew.
 
 ```{r}
+hist(data$weight)
+```
+
+
+### Behavior over time
+
+What we're really interested in is how weight changes over time. The plot below shows all of the cleaned observations over time.
+
+```{r}
+# Sort by date for the plot
+data <- data[order(data$date),]
+
 plot(data$date,data$weight,type="l")
+```
+
+THere's a troublesome trend. While early years show fluctuations over the full range of weights, 2014 weights seem to be stuck in the higher end of the range. To explore this trend further, we separate the years.
+
+To compare the years, we use the lattice graphics package. Lattice is convenient for comparing multiple sets of data, as we want to do for different years.
+
+```{r}
+# Add a "year" field
+data$year <- cut(data$date, 'year')
+
+require(lattice)
+bwplot(weight~year, data)
+```
+
+It's even worse than we feared. At least visually, there is an upward trend from 2012 to 2014. We can look at trends over the year to see whether 2014 patterns show a departure from previous years. Again, we use the lattice package.
+
+```{r}
+# Strip off the year
+data$dayOfYear <- as.numeric(difftime(data$date, data$year, units="days"))
+
+# Sort each of the years
+data <- data[order(data$dayOfYear),]
+
+xyplot(weight ~ dayOfYear
+       , data
+       , groups=year    # Use a different line for each year
+       , type="l"
+       , auto.key=TRUE) # create a legend
+```
+
+This is a little messy. Let's separate each of the years:
+
+```{r}
+xyplot(weight ~ dayOfYear | as.factor(year)
+       , data
+       , type="l")
 ```
 
