@@ -1,0 +1,89 @@
+---
+title: "Alex’s Weight"
+author: "Alex Krowitz"
+date: "December 23, 2014"
+output: html_document
+---
+
+## Summary
+
+This document demonstrates R markdown capabilities using  weight data.
+
+## Data
+
+Data analyzed in this document was downloaded on 12/23/2014 from [Google Drive](https://docs.google.com/spreadsheet/pub?key=0Am9Zu_A32sZHdERNQWFxSUROTlV6SGd5WnkzMzRlb2c&output=html).
+Data collection was performed sporadically through a [Google Docs form](https://docs.google.com/forms/d/1nx-yt3DvgvYYp6cmzDEz2yV_M3lECKBZwB8gUgKhUIc/viewform).
+Data collection was almost always performed in the morning after waking up. 
+
+The same scale was used for all measurements. Measurements were taken in pounds. The scale has a resolution of 0.5 pounds.
+
+The purpose for data collection was typically to slow weight gain through increased visibility and awareness. For this reason, I would expect that weight values would start high as the need arose to record weights, then decrease (assuming increased awareness was sufficient to bring weight down), then recording would stop while the weight stayed at acceptable levels.
+
+### Data Cleaning
+
+The raw data has three variables:
+
+```{r}
+raw <- read.csv('Weight - Weight.csv', stringsAsFactors=FALSE)
+str(raw)
+```
+
+The reason for the redundant date fields is historical. Originally, the data was entered through Google Docs, and the date was entered manually in the Date field. Data collection using a Google Docs form replaced manual entry, at which point the date was automatically entered in Timestamp field.
+
+The following R code creates a date field that uses the Date field if it is available, and uses the Timestamp field if Date is not present. The new field also converts the dates in the native R date format. Note that times in the Timestamp column are ignored.
+
+```{r}
+CleanDate <- as.Date(raw$Timestamp, format = '%m/%d/%Y')
+
+# The command above created missing (NA) values if Timestamp was missing. 
+missing <- which(is.na(CleanDate))
+
+# Fill in the missing dates from the Date field
+CleanDate[missing] <- as.Date(raw$Date[missing], format = '%m/%d/%Y')
+
+num_missing_dates <- sum(is.na(CleanDate))
+```
+
+Missing weights also need to be identified.
+
+```{r}
+CleanWeight <- as.numeric(raw$Weight)
+CleanWeight[raw$Weight==""] <- NA
+
+num_missing_weights <- sum(is.na(CleanWeight))
+```
+
+There were `r num_missing_dates` missing dates and `r num_missing_weights` missing weights. These were removed to create the clean dataset.
+
+```{r}
+# Create a new data frame with the cleaned dates (labeled Date)
+data <- data.frame(date = CleanDate, weight = CleanWeight)
+
+data <- data[!(is.na(CleanDate) | is.na(CleanWeight)),]
+
+# Sort by date
+data <- data[order(data$date),]
+```
+
+### Data Profile
+
+The new data set has `r nrow(data)` observations, collected between `r min(data$date)` and `r max(data$date)`.
+
+
+```{r}
+s <- summary(data$weight)
+s
+```
+
+Half of the weights are in the range (`r s[2]`, `r s[4]`). The boxplot below shows that most of the observations lie in the higher part of the range.
+
+```{r}
+boxplot(data$weight)
+```
+
+### Behavior over time
+
+```{r}
+plot(data$date,data$weight,type="l")
+```
+
