@@ -71,7 +71,7 @@ s <- summary(data$weight)
 s
 ```
 
-Half of the weights are in the range (`r s[2]`, `r s[4]`). The boxplot below shows that most of the observations lie in the higher part of the range.
+Half of the weights are in the range (`r s[2]`, `r s[5]`). The boxplot below shows that most of the observations lie in the higher part of the range.
 
 ```{r}
 boxplot(data$weight)
@@ -123,7 +123,26 @@ xyplot(weight ~ dayOfYear
        , auto.key=TRUE) # create a legend
 ```
 
-This is a little messy. Let's separate each of the years:
+THe lack of a clear yearly pattern makes the combination a little messy. However, 2014 does show a departure from other years: the summer months have higher weight. 
+
+```{r}
+# approximately start approximately at julian day 171
+sdata <- data[data$dayOfYear >= 171 & data$dayOfYear <= 171+90,]
+xyplot(weight ~ dayOfYear
+       , sdata
+       , groups=year    # Use a different line for each year
+       , type="l"
+       , auto.key=TRUE) # create a legend
+sold <- sdata[sdata$year!=2014,]
+s14 <-sdata[sdata$year==2014,]
+qqnorm(sold$weight)
+qqline(sold$weight)
+```
+
+
+
+
+Let's try to clarify the picture by separating each of the years, using | in the formula:
 
 ```{r}
 xyplot(weight ~ dayOfYear | as.factor(year)
